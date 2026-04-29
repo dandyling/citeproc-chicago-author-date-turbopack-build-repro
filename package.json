@@ -8,6 +8,10 @@
     "start": "next start"
   },
   "dependencies": {
+    "@citation-js/core": "^0.7.14",
+    "@citation-js/plugin-csl": "^0.7.14",
+    "@sentry/nextjs": "^10.31.0",
+    "citeproc": "^2.4.63",
     "next": "16.1.7",
     "react": "19.2.3",
     "react-dom": "19.2.3"
@@ -16,6 +20,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "puppeteer": "^24.42.0",
     "typescript": "^5"
   }
 }

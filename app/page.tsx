@@ -1,66 +1,58 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+'use client'
+
+import { useEffect, useState } from 'react'
+import { Cite, plugins } from '@citation-js/core'
+import '@citation-js/plugin-csl'
+
+const SAMPLE = [
+  {
+    id: '1',
+    type: 'article-journal',
+    title: 'Hello World',
+    author: [{ family: 'Doe', given: 'Jane' }],
+    issued: { 'date-parts': [[2024]] },
+    page: '45-67',
+  },
+]
 
 export default function Home() {
+  const [out, setOut] = useState<string>('(loading)')
+  const [err, setErr] = useState<string | null>(null)
+
+  useEffect(() => {
+    ;(async () => {
+      // chicago-author-date is not bundled in @citation-js/plugin-csl by
+      // default. Fetch the official CSL XML and register it the way real apps do.
+      const xml = await fetch('/chicago-author-date.csl').then(r => r.text())
+      ;(plugins.config.get('@csl') as any).templates.add('chicago-author-date', xml)
+
+      try {
+        const cite = new Cite(SAMPLE)
+        const bib = cite.format('bibliography', {
+          format: 'html',
+          template: 'chicago-author-date',
+          lang: 'en-US',
+          asEntryArray: true,
+        }) as unknown
+        setOut(JSON.stringify(bib, null, 2))
+      } catch (e) {
+        setErr(String(e) + '\n\n' + (e instanceof Error ? e.stack : ''))
+      }
+    })()
+  }, [])
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+    <main style={{ padding: 24, fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
+      <h1>Turbopack prod minifier breaks citeproc page_mangler</h1>
+      <p>
+        Expected: bibliography entry rendered.<br />
+        Actual (in <code>next build &amp;&amp; next start</code>):{' '}
+        <code>TypeError: Cannot read properties of null (reading &apos;2&apos;)</code>
+      </p>
+      <h2>Error:</h2>
+      <pre style={{ color: 'red' }}>{err ?? '(none)'}</pre>
+      <h2>Output:</h2>
+      <pre>{out}</pre>
+    </main>
+  )
 }

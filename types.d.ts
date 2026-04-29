@@ -1,0 +1,6 @@
+declare module '@citation-js/core'
+declare module '@citation-js/plugin-csl'
+declare module '@citation-js/plugin-csl/lib/locales.js'
+declare module '@citation-js/plugin-csl/lib/styles.js'
+declare module '@citation-js/plugin-csl/lib/engines.js'
+declare module '@citation-js/plugin-csl/lib/bibliography.js'
