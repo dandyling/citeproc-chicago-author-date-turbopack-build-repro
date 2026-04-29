@@ -1,9 +1,8 @@
 # Turbopack prod minifier breaks citeproc `page_mangler`
 
 Minimal reproduction for a Next.js 16 / Turbopack prod-minifier bug that
-corrupts [`citeproc-js`](https://www.npmjs.com/package/citeproc) such that
-formatting a Chicago author-date bibliography for any CSL entry containing a
-`page` field throws:
+causes [`citeproc-js`](https://www.npmjs.com/package/citeproc) loading
+a Chicago author-date bibliography having `page` field to throws:
 
 ```
 TypeError: Cannot read properties of null (reading '2')
@@ -16,9 +15,12 @@ TypeError: Cannot read properties of null (reading '2')
     at o.a [as format]
 ```
 
-`next dev` works. `next build && next start` throws. Setting
-`experimental.turbopackMinify: false` in `next.config.ts` makes the prod build
-work.
+## Steps to reproduce
+
+1. `next dev` works.
+2. `next build && next start` throws.
+3. Setting
+   `experimental.turbopackMinify: false` in `next.config.ts` makes 2. works
 
 ## Versions
 
@@ -43,92 +45,3 @@ work.
 
 Expected: the bibliography HTML for that one entry. Actual in prod: the
 `TypeError` above.
-
-## Reproduce
-
-```bash
-npm install
-```
-
-### 1. Show that `next dev` works (no minification)
-
-```bash
-PORT=3100 npm run dev
-```
-
-Open <http://localhost:3100>. Bibliography renders:
-
-> Doe, Jane. 2024. *Hello World*. 45–67.
-
-Stop the dev server.
-
-### 2. Show that `next build && next start` throws
-
-```bash
-rm -rf .next
-npm run build
-PORT=3100 npm start
-```
-
-Open <http://localhost:3100>. The page shows the `TypeError`. The browser
-console shows the same.
-
-### 3. Show that disabling `turbopackMinify` fixes it
-
-Edit `next.config.ts` and uncomment the `experimental` block so it reads:
-
-```ts
-const nextConfig: NextConfig = {
-  experimental: { turbopackMinify: false },
-}
-```
-
-Then:
-
-```bash
-rm -rf .next
-npm run build
-PORT=3100 npm start
-```
-
-Open <http://localhost:3100>. Bibliography renders correctly. Revert the
-config and the build is broken again.
-
-### 4. Verify with the headless harness (optional)
-
-`check.cjs` is a Puppeteer script that loads the page, waits for `useEffect`
-to finish, and prints the DOM error/output blocks plus any console messages
-or `pageerror` events. It's how this repro was bisected.
-
-```bash
-node check.cjs http://localhost:3100/
-```
-
-It prints `--- DOM error pre ---` followed by the stack trace when the bug
-fires, or `(none)` when it doesn't.
-
-## What changes between the working and broken builds
-
-The crash is inside the `page_mangler` function in citeproc's prebuilt
-`citeproc_commonjs.js`. With `turbopackMinify: true` (build default), the
-SWC-based minifier mangles that function such that a `String.prototype.match`
-that returns `null` is no longer guarded before its `[2]` access. The same
-data exercises the same code path in dev (with `turbopackMinify: false`) and
-under `next build` with `turbopackMinify: false`, both of which work.
-
-`page_mangler` is reached from `getSortKeys` → `Engine.processNumber` because
-`chicago-author-date.csl` declares `<sort>` keys in its `<bibliography>`
-block; APA, Vancouver, etc. don't, which is why no other style triggers it.
-A CSL entry without a `page` field also doesn't trigger it.
-
-## Trigger requirements (minimal)
-
-All of these are required:
-
-- `next build && next start` (i.e. Turbopack prod with default
-  `experimental.turbopackMinify: true`)
-- `template: 'chicago-author-date'` (any style with a page-based `<sort>`
-  bibliography block)
-- A CSL JSON entry with a `page` field
-
-Removing any one of them makes the bug disappear.
